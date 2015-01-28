@@ -1,8 +1,7 @@
 compilation:
   cloud_properties:
-    cpu: 2
-    disk: 6144
-    ram: 1024
+    availability_zone: zone_1
+    instance_type: c1.medium
   network: cf1
   reuse_compilation_vms: true
   workers: 6
@@ -11,19 +10,18 @@ jobs:
 - default_networks:
   - name: cf1
     static_ips: null
-  instances: 1
+  instances: 0
   name: ha_proxy_z1
   networks:
   - name: cf1
-    static_ips:
-    - 0.0.0.3
+    static_ips: null
   properties:
     metron_agent:
       zone: z1
     ha_proxy:
       ssl_ciphers: null
       ssl_pem: null
-      disable_http: true
+      disable_http: false
     networks:
       apps: cf1
     router:
@@ -46,10 +44,10 @@ jobs:
     static_ips:
     - 0.0.0.1
   properties:
-    networks:
-      apps: cf1
     metron_agent:
       zone: z1
+    networks:
+      apps: cf1
   resource_pool: medium_z1
   templates:
   - name: nats
@@ -84,8 +82,8 @@ jobs:
   networks:
   - name: cf1
     static_ips:
-    - 0.0.0.14
-    - 0.0.0.15
+    - 0.0.0.10
+    - 0.0.0.25
   persistent_disk: 10024
   properties:
     networks:
@@ -106,7 +104,7 @@ jobs:
   networks:
   - name: cf2
     static_ips:
-    - 0.0.1.13
+    - 0.0.1.9
   persistent_disk: 10024
   properties:
     networks:
@@ -138,12 +136,11 @@ jobs:
   - name: metron_agent
     release: cf
   update: {}
-- instances: 1
+- instances: 0
   name: nfs_z1
   networks:
   - name: cf1
-    static_ips:
-    - 0.0.0.2
+    static_ips: null
   properties:
     metron_agent:
       zone: z1
@@ -155,12 +152,11 @@ jobs:
   - name: metron_agent
     release: cf
   update: {}
-- instances: 1
+- instances: 0
   name: postgres_z1
   networks:
   - name: cf1
-    static_ips:
-    - 0.0.0.12
+    static_ips: null
   properties:
     metron_agent:
       zone: z1
@@ -216,6 +212,7 @@ jobs:
   resource_pool: medium_z1
   templates:
   - name: login
+    release: cf
   - name: metron_agent
     release: cf
   update: {}
@@ -246,7 +243,7 @@ jobs:
     networks:
       apps: cf1
     nfs_server:
-      address: 0.0.0.2
+      address: null
       allow_from_entries:
       - null
       - null
@@ -271,7 +268,7 @@ jobs:
     networks:
       apps: cf2
     nfs_server:
-      address: 0.0.0.2
+      address: null
       allow_from_entries:
       - null
       - null
@@ -313,7 +310,7 @@ jobs:
     networks:
       apps: cf1
     nfs_server:
-      address: 0.0.0.2
+      address: null
       allow_from_entries:
       - null
       - null
@@ -338,7 +335,7 @@ jobs:
     networks:
       apps: cf2
     nfs_server:
-      address: 0.0.0.2
+      address: null
       allow_from_entries:
       - null
       - null
@@ -433,76 +430,48 @@ jobs:
   networks:
   - name: cf1
   properties:
-    doppler:
-      zone: z1
-    metron_agent:
-      zone: z1
+<%= loggregator_z1_properties %>
     networks:
       apps: cf1
   resource_pool: medium_z1
   templates:
-  - name: doppler
-    release: cf
-  - name: syslog_drain_binder
-    release: cf
-  - name: metron_agent
-    release: cf
+<%= loggregator_templates %>
   update: {}
 - instances: 2
   name: loggregator_z2
   networks:
   - name: cf2
   properties:
-    doppler:
-      zone: z2
-    metron_agent:
-      zone: z2
+<%= loggregator_z2_properties %>
     networks:
       apps: cf2
   resource_pool: medium_z2
   templates:
-  - name: doppler
-    release: cf
-  - name: syslog_drain_binder
-    release: cf
-  - name: metron_agent
-    release: cf
+<%= loggregator_templates %>
   update: {}
 - instances: 1
   name: loggregator_trafficcontroller_z1
   networks:
   - name: cf1
   properties:
-    metron_agent:
-      zone: z1
+<%= loggregator_trafficcontroller_z1_properties %>
     networks:
       apps: cf1
-    traffic_controller:
-      zone: z1
   resource_pool: small_z1
   templates:
-  - name: loggregator_trafficcontroller
-    release: cf
-  - name: metron_agent
-    release: cf
+<%= loggregator_trafficcontroller_templates %>
   update: {}
 - instances: 1
   name: loggregator_trafficcontroller_z2
   networks:
   - name: cf2
   properties:
-    metron_agent:
-      zone: z2
+<%= loggregator_trafficcontroller_z2_properties %>
     networks:
       apps: cf2
-    traffic_controller:
-      zone: z2
   resource_pool: small_z2
   templates:
-  - name: loggregator_trafficcontroller
-    release: cf
-  - name: metron_agent
-    release: cf
+<%= loggregator_trafficcontroller_templates %>
   update: {}
 - instances: 1
   name: router_z1
@@ -567,7 +536,7 @@ meta:
   - name: cf
     version: latest
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   default_env:
     bosh:
@@ -587,7 +556,7 @@ networks:
 properties:
   acceptance_tests: null
   app_domains:
-  - 0.0.0.3.xip.io
+  - example.com
   cc:
     allowed_cors_domains: []
     app_events:
@@ -601,7 +570,11 @@ properties:
     buildpacks:
       buildpack_directory_key: bd_key
       cdn: null
-      fog_connection: null
+      fog_connection:
+        aws_access_key_id: AWS_ACCESS_KEY
+        aws_secret_access_key: AWS_SECRET_ACCESS_KEY
+        provider: AWS
+        region: us-east-1
     bulk_api_password: password
     internal_api_user: internal_user
     internal_api_password: password
@@ -635,14 +608,18 @@ properties:
     development_mode: false
     diego:
       running: disabled
-      staging: disabled
+      staging: optional
     diego_docker: false
     directories: null
     disable_custom_buildpacks: false
     droplets:
       cdn: null
       droplet_directory_key: the_key
-      fog_connection: null
+      fog_connection:
+        aws_access_key_id: AWS_ACCESS_KEY
+        aws_secret_access_key: AWS_SECRET_ACCESS_KEY
+        provider: AWS
+        region: us-east-1
     external_host: api
     external_protocol: http
     install_buildpacks:
@@ -691,9 +668,13 @@ properties:
         enabled: true
         record_sql: obfuscated
     packages:
-      app_package_directory_key: 0.0.0.3.xip.io-cc-packages
+      app_package_directory_key: example.com-cc-packages
       cdn: null
-      fog_connection: null
+      fog_connection:
+        aws_access_key_id: AWS_ACCESS_KEY
+        aws_secret_access_key: AWS_SECRET_ACCESS_KEY
+        provider: AWS
+        region: us-east-1
       max_package_size: 1073741824
     quota_definitions:
       default:
@@ -703,8 +684,12 @@ properties:
         total_services: 100
     resource_pool:
       cdn: null
-      fog_connection: null
-      resource_directory_key: 0.0.0.3.xip.io-cc-resources
+      fog_connection:
+        aws_access_key_id: AWS_ACCESS_KEY
+        aws_secret_access_key: AWS_SECRET_ACCESS_KEY
+        provider: AWS
+        region: us-east-1
+      resource_directory_key: example.com-cc-resources
     security_group_definitions:
     - name: public_networks
       rules:
@@ -726,7 +711,7 @@ properties:
       - destination: 0.0.0.0/0
         ports: "53"
         protocol: udp
-    srv_api_uri: https://api.0.0.0.3.xip.io
+    srv_api_uri: https://api.example.com
     stacks: null
     staging_upload_password: password
     staging_upload_user: username
@@ -753,44 +738,27 @@ properties:
         restart_if_above_mb: null
         restart_if_consistently_above_mb: null
     user_buildpacks: []
-  hm9000:
-    url: https://hm9000.0.0.0.3.xip.io
   ccdb:
-    address: 0.0.0.12
+    address: ccdb.example.com
     databases:
-    - citext: true
-      name: ccdb
+    - name: ccdb
       tag: cc
-    db_scheme: postgres
-    port: 5524
+    db_scheme: db_scheme
+    port: 0
     roles:
-    - name: ccadmin
-      password: admin
-      tag: admin
+    - name: db_user_name
+      password: db_user_password
+      tag: db_user
   collector: null
-  databases:
-    address: 0.0.0.12
-    databases:
-    - citext: true
-      name: ccdb
-      tag: cc
-    - citext: true
-      name: uaadb
-      tag: uaa
-    db_scheme: postgres
-    port: 5524
-    roles:
-    - name: ccadmin
-      password: admin
-      tag: admin
-    - name: uaaadmin
-      password: admin
-      tag: admin
+  databases: null
   dea_next:
     advertise_interval_in_seconds: 5
-    allow_networks: []
+    allow_networks:
+    - 10.10.0.2/32
     default_health_check_timeout: 60
-    deny_networks: []
+    deny_networks:
+    - 169.254.0.0/16
+    - 10.10.0.0/16
     directory_server_protocol: https
     disk_mb: 2048
     disk_overcommit_factor: 2
@@ -807,20 +775,17 @@ properties:
     rlimit_core: 0
   description: Cloud Foundry sponsored by Pivotal
   disk_quota_enabled: true
-  domain: 0.0.0.3.xip.io
-  doppler:
-    blacklisted_syslog_ranges: null
-    debug: false
-    maxRetainedLogMessages: 100
+  domain: example.com
+<%= lamb_properties %>
   doppler_endpoint:
-    shared_secret: loggregator_endpoint_secret
+    shared_secret: secret
   dropsonde:
     enabled: true
   etcd:
     machines:
-    - 0.0.0.14
-    - 0.0.0.15
-    - 0.0.1.13
+    - 0.0.0.10
+    - 0.0.0.25
+    - 0.0.1.9
   etcd_metrics_server:
     nats:
       machines:
@@ -828,13 +793,10 @@ properties:
       - 0.0.1.1
       password: nats_password
       username: nats_user
-  logger_endpoint: null
-  loggregator:
-    blacklisted_syslog_ranges: null
-    debug: false
-    maxRetainedLogMessages: 100
+  logger_endpoint:
+    port: 4443
   loggregator_endpoint:
-    shared_secret: loggregator_endpoint_secret
+    shared_secret: secret
   login:
     enabled: true
     analytics:
@@ -845,14 +807,14 @@ properties:
     catalina_opts: -Xmx768m -XX:MaxPermSize=256m
     invitations_enabled: null
     links:
-      home: https://console.0.0.0.3.xip.io
+      home: https://console.example.com
       network: null
-      passwd: https://console.0.0.0.3.xip.io/password_resets/new
-      signup: https://console.0.0.0.3.xip.io/register
+      passwd: https://console.example.com/password_resets/new
+      signup: https://console.example.com/register
       signup-network: null
     notifications:
       url: null
-    protocol: http
+    protocol: https
     restricted_ips_regex: 10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.1[6-9]{1}\.\d{1,3}\.\d{1,3}|172\.2[0-9]{1}\.\d{1,3}\.\d{1,3}|172\.3[0-1]{1}\.\d{1,3}\.\d{1,3}
     saml: null
     self_service_links_enabled: null
@@ -869,7 +831,7 @@ properties:
     url: null
     messages: null
   metron_endpoint:
-    shared_secret: loggregator_endpoint_secret
+    shared_secret: secret
   nats:
     address: 0.0.0.1
     debug: false
@@ -883,7 +845,7 @@ properties:
     trace: false
     user: nats_user
   nfs_server:
-    address: 0.0.0.2
+    address: null
     allow_from_entries:
     - null
     - null
@@ -900,8 +862,8 @@ properties:
     skip_cert_verify: false
   support_address: http://support.cloudfoundry.com
   syslog_daemon_config: null
-  system_domain: 0.0.0.3.xip.io
-  system_domain_organization: pivotal
+  system_domain: example.com
+  system_domain_organization: null
   uaa:
     admin:
       client_secret: admin_secret
@@ -922,10 +884,12 @@ properties:
       developer_console:
         secret: developer_console_secret
       login:
+        override: true
+        scope: openid,oauth.approvals
         authorities: oauth.login,scim.write,clients.read,notifications.write,critical_notifications.write,emails.write,scim.userids,password.write
         authorized-grant-types: authorization_code,client_credentials,refresh_token
         override: true
-        redirect-uri: http://login.0.0.0.3.xip.io
+        redirect-uri: https://login.example.com
         scope: openid,oauth.approvals
         secret: login_client_secret
       notifications:
@@ -953,176 +917,175 @@ properties:
       users:
       - admin|fakepassword|scim.write,scim.read,openid,cloud_controller.admin,doppler.firehose
     spring_profiles: null
-    url: https://uaa.0.0.0.3.xip.io
+    url: https://uaa.example.com
     user: null
+  hm9000:
+    url: https://hm9000.example.com
+  template_only:
+    aws:
+      access_key_id: AWS_ACCESS_KEY
+      secret_access_key: AWS_SECRET_ACCESS_KEY
+      availability_zone: zone_1
+      availability_zone2: zone_2
   uaadb:
-    address: 0.0.0.12
+    address: uaadb.example.com
     databases:
-    - citext: true
-      name: uaadb
+    - name: uaadb
       tag: uaa
-    db_scheme: postgresql
-    port: 5524
+    db_scheme: db_scheme
+    port: 0
     roles:
-    - name: uaaadmin
-      password: admin
-      tag: admin
+    - name: db_user_name
+      password: db_user_password
+      tag: db_user
 releases:
 - name: cf
   version: latest
 resource_pools:
 - cloud_properties:
-    cpu: 1
-    disk: 4096
-    ram: 1024
+    availability_zone: zone_1
+    instance_type: m1.small
   name: small_z1
   network: cf1
   size: 3
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 4096
-    ram: 1024
+    availability_zone: zone_2
+    instance_type: m1.small
   name: small_z2
   network: cf2
   size: 2
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 4096
-    ram: 1024
+    availability_zone: zone_1
+    instance_type: m1.medium
   name: medium_z1
   network: cf1
-  size: 11
+  size: 9
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 4096
-    ram: 1024
+    availability_zone: zone_2
+    instance_type: m1.medium
   name: medium_z2
   network: cf2
   size: 7
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 10240
-    ram: 1024
+    availability_zone: zone_1
+    instance_type: m1.large
   name: large_z1
   network: cf1
   size: 1
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 10240
-    ram: 1024
+    availability_zone: zone_2
+    instance_type: m1.large
   name: large_z2
   network: cf2
   size: 1
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 2
-    disk: 32768
-    ram: 16384
+    availability_zone: zone_1
+    instance_type: m1.large
   name: runner_z1
   network: cf1
   size: 1
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 2
-    disk: 32768
-    ram: 16384
+    availability_zone: zone_2
+    instance_type: m1.large
   name: runner_z2
   network: cf2
   size: 1
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 2048
-    ram: 1024
+    availability_zone: zone_1
+    elbs:
+    - cfrouter
+    instance_type: m1.medium
   name: router_z1
   network: cf1
-  size: 2
+  size: 1
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 2048
-    ram: 1024
+    availability_zone: zone_2
+    elbs:
+    - cfrouter
+    instance_type: m1.medium
   name: router_z2
   network: cf2
   size: 1
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 2048
-    ram: 1024
+    availability_zone: zone_1
+    instance_type: m1.small
   name: small_errand
   network: cf1
   size: 2
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
       password: $6$4gDD3aV0rdqlrKC$2axHCxGKIObs6tAmMTqYCspcdvQXh3JJcvWOY2WGb4SrdXtnCyNaWlrf3WEqvYR2MYizEGp3kMmbpwBC6jsHt0
 - cloud_properties:
-    cpu: 1
-    disk: 10240
-    ram: 1024
+    availability_zone: zone_1
+    instance_type: c3.xlarge
   name: xlarge_errand
   network: cf1
   size: 0
   stemcell:
-    name: bosh-vsphere-esxi-ubuntu
+    name: bosh-aws-xen-ubuntu-trusty-go_agent
     version: latest
   env:
     bosh:
